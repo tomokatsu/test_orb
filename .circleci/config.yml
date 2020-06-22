@@ -1,0 +1,26 @@
+version: 2.1
+orbs:
+  docker-cache: cci-x/docker-registry-image-cache@0.2.0
+workflows:
+  ci:
+    jobs:
+      - build-docker-image
+jobs:
+  build-docker-image:
+    machine:
+      image: 'ubuntu-1604:201903-01'
+    steps:
+      - run:
+          name: docker login
+          command: |
+            echo "$REGISTRY_PASSWORD" | \
+              docker login --username "$REGISTRY_USERNAME" --password-stdin https://us.gcr.io
+      - docker-cache/with-save-restore-images:
+          repository: us.gcr.io/myrepo
+          images: 'myapp:${CIRCLE_BRANCH/\//-} myapp:master'
+          steps:
+            - docker-cache/build:
+                command: 'docker build -t myapp:${CIRCLE_BRANCH/\//-} .'
+      - run:
+          name: Test
+          command: ./test-all
